@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { PlusCircle, FileText, ClipboardList, ShieldCheck, ExternalLink, Calendar } from "lucide-react";
 // Importamos el cliente de supabase que configuramos en lib/supabase.ts
@@ -14,6 +14,25 @@ export default function SkorifyDashboard() {
   // Nuevo estado para el formulario de creación de sesión
   const [showCreateSession, setShowCreateSession] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // NUEVO: Estado para almacenar las sesiones reales de la base de datos
+  const [sesiones, setSesiones] = useState<any[]>([]);
+
+  // NUEVO: Cargar sesiones desde Supabase al iniciar
+  useEffect(() => {
+    fetchSesiones();
+  }, []);
+
+  const fetchSesiones = async () => {
+    const { data, error } = await supabase
+      .from("sesiones")
+      .select("*")
+      .order("fecha", { ascending: false });
+    
+    if (!error && data) {
+      setSesiones(data);
+    }
+  };
 
   // Función para crear la sesión en Supabase
   const handleCreateSession = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -24,7 +43,7 @@ export default function SkorifyDashboard() {
     const nombreSesion = formData.get("nombre_sesion");
     const fechaSesion = formData.get("fecha");
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("sesiones")
       .insert([
         { 
@@ -33,14 +52,18 @@ export default function SkorifyDashboard() {
           link_drive: DRIVE_URL,
           estado: "planificada"
         }
-      ]);
+      ])
+      .select(); // Seleccionamos el resultado para obtener el ID
 
     if (error) {
       alert("Error al crear sesión: " + error.message);
     } else {
       alert("¡Sesión creada con éxito para AWS User Group!");
       setShowCreateSession(false);
-      window.location.reload(); // Para refrescar la lista de trazabilidad
+      
+      // NUEVO: Actualizamos la lista local y abrimos el formulario de registro automáticamente
+      await fetchSesiones();
+      setShowForm(true); 
     }
     setLoading(false);
   };
@@ -52,12 +75,12 @@ export default function SkorifyDashboard() {
       <header className="relative bg-[#1A1135] overflow-hidden min-h-[160px]">
         {/* Imagen de fondo (Curva del documento) */}
         <div className="absolute top-0 right-0 w-full h-full opacity-40 pointer-events-none">
-           <Image 
-            src="/header-curve.png" 
-            alt="Curve Background" 
-            fill
-            className="object-right-top object-contain"
-          />
+            <Image 
+             src="/header-curve.png" 
+             alt="Curve Background" 
+             fill
+             className="object-right-top object-contain"
+           />
         </div>
 
         <div className="relative z-10 max-w-6xl mx-auto p-6 flex flex-col md:flex-row justify-between items-center md:items-end h-full">
@@ -156,23 +179,30 @@ export default function SkorifyDashboard() {
             </div>
             
             <div className="divide-y divide-slate-100">
-              <div className="p-6 flex justify-between items-center hover:bg-slate-50/50 transition-colors">
-                <div className="flex gap-5 items-center">
-                  <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-[#FF9900] font-bold">
-                    #06
+              {/* NUEVO: Mapeo dinámico de sesiones desde la base de datos */}
+              {sesiones.length > 0 ? (
+                sesiones.map((sesion, index) => (
+                  <div key={sesion.id} className="p-6 flex justify-between items-center hover:bg-slate-50/50 transition-colors">
+                    <div className="flex gap-5 items-center">
+                      <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-[#FF9900] font-bold">
+                        #{String(sesiones.length - index).padStart(2, '0')}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-base">{sesion.nombre}</h4>
+                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
+                          {sesion.fecha} • Universidad Nacional
+                        </p>
+                      </div>
+                    </div>
+                    <button className="flex items-center gap-2 text-xs font-bold text-[#FF9900] hover:text-[#e68a00] bg-orange-50 px-4 py-2 rounded-lg transition-colors">
+                      <FileText size={14} />
+                      Reporte PDF
+                    </button>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-base">Skorify: Sesión de Carnetización</h4>
-                    <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
-                      23 de abril, 2026 • Universidad Nacional
-                    </p>
-                  </div>
-                </div>
-                <button className="flex items-center gap-2 text-xs font-bold text-[#FF9900] hover:text-[#e68a00] bg-orange-50 px-4 py-2 rounded-lg transition-colors">
-                  <FileText size={14} />
-                  Reporte PDF
-                </button>
-              </div>
+                ))
+              ) : (
+                <p className="p-6 text-sm text-slate-400 italic text-center">No hay sesiones registradas aún.</p>
+              )}
             </div>
           </div>
         </div>
