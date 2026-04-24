@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link"; // Importado para la navegación
 import { PlusCircle, FileText, ClipboardList, ShieldCheck, ExternalLink, Calendar } from "lucide-react";
 // Importamos el cliente de supabase que configuramos en lib/supabase.ts
 import { supabase } from "@/lib/supabase"; 
@@ -58,13 +59,6 @@ export default function SkorifyDashboard() {
     if (error) {
       alert("Error al crear sesión: " + error.message);
     } else {
-      // alert("¡Sesión creada con éxito para AWS User Group!");
-      // setShowCreateSession(false);
-      
-      // // NUEVO: Actualizamos la lista local y abrimos el formulario de registro automáticamente
-      // await fetchSesiones();
-      // setShowForm(true); 
-
       const nuevaSesion = data[0];
       // Redirigimos al panel administrativo de la sesión creada
       window.location.href = `/sesion/${nuevaSesion.id}`;
@@ -96,6 +90,9 @@ export default function SkorifyDashboard() {
                 alt="AWS User Group Manizales Logo" 
                 fill
                 className="object-contain p-2"
+                // AÑADE ESTA LÍNEA:
+                sizes="(max-width: 768px) 80px, 96px"
+                loading="eager"
               />
             </div>
             <div className="space-y-1">
@@ -129,7 +126,6 @@ export default function SkorifyDashboard() {
               Comité de Logística
             </h3>
             <div className="space-y-4">
-              {/* BOTÓN NUEVA SESIÓN - NUEVA FUNCIONALIDAD */}
               <button 
                 onClick={() => setShowCreateSession(true)}
                 className="w-full bg-[#1A1135] text-white py-3 rounded-xl font-bold hover:bg-[#2D1F5D] transition-all flex justify-center items-center gap-2 border-b-4 border-orange-500"
@@ -183,26 +179,27 @@ export default function SkorifyDashboard() {
             </div>
             
             <div className="divide-y divide-slate-100">
-              {/* NUEVO: Mapeo dinámico de sesiones desde la base de datos */}
               {sesiones.length > 0 ? (
                 sesiones.map((sesion, index) => (
-                  <div key={sesion.id} className="p-6 flex justify-between items-center hover:bg-slate-50/50 transition-colors">
-                    <div className="flex gap-5 items-center">
-                      <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-[#FF9900] font-bold">
-                        #{String(sesiones.length - index).padStart(2, '0')}
+                  <Link key={sesion.id} href={`/sesion/${sesion.id}`} className="block hover:bg-slate-50 transition-colors">
+                    <div className="p-6 flex justify-between items-center">
+                      <div className="flex gap-5 items-center">
+                        <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-[#FF9900] font-bold">
+                          #{String(sesiones.length - index).padStart(2, '0')}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900 text-base">{sesion.nombre}</h4>
+                          <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
+                            {sesion.fecha} • Universidad Nacional
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-slate-900 text-base">{sesion.nombre}</h4>
-                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
-                          {sesion.fecha} • Universidad Nacional
-                        </p>
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#FF9900] bg-orange-50 px-4 py-2 rounded-lg">
+                        <FileText size={14} />
+                        Gestionar
                       </div>
                     </div>
-                    <button className="flex items-center gap-2 text-xs font-bold text-[#FF9900] hover:text-[#e68a00] bg-orange-50 px-4 py-2 rounded-lg transition-colors">
-                      <FileText size={14} />
-                      Reporte PDF
-                    </button>
-                  </div>
+                  </Link>
                 ))
               ) : (
                 <p className="p-10 text-sm text-slate-400 italic text-center w-full">No hay sesiones registradas aún.</p>
