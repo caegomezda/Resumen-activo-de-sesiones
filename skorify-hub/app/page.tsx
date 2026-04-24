@@ -58,12 +58,16 @@ export default function SkorifyDashboard() {
     if (error) {
       alert("Error al crear sesión: " + error.message);
     } else {
-      alert("¡Sesión creada con éxito para AWS User Group!");
-      setShowCreateSession(false);
+      // alert("¡Sesión creada con éxito para AWS User Group!");
+      // setShowCreateSession(false);
       
-      // NUEVO: Actualizamos la lista local y abrimos el formulario de registro automáticamente
-      await fetchSesiones();
-      setShowForm(true); 
+      // // NUEVO: Actualizamos la lista local y abrimos el formulario de registro automáticamente
+      // await fetchSesiones();
+      // setShowForm(true); 
+
+      const nuevaSesion = data[0];
+      // Redirigimos al panel administrativo de la sesión creada
+      window.location.href = `/sesion/${nuevaSesion.id}`;
     }
     setLoading(false);
   };
@@ -76,11 +80,11 @@ export default function SkorifyDashboard() {
         {/* Imagen de fondo (Curva del documento) */}
         <div className="absolute top-0 right-0 w-full h-full opacity-40 pointer-events-none">
             <Image 
-             src="/header-curve.png" 
-             alt="Curve Background" 
-             fill
-             className="object-right-top object-contain"
-           />
+              src="/header-curve.png" 
+              alt="Curve Background" 
+              fill
+              className="object-right-top object-contain"
+            />
         </div>
 
         <div className="relative z-10 max-w-6xl mx-auto p-6 flex flex-col md:flex-row justify-between items-center md:items-end h-full">
@@ -201,7 +205,7 @@ export default function SkorifyDashboard() {
                   </div>
                 ))
               ) : (
-                <p className="p-6 text-sm text-slate-400 italic text-center">No hay sesiones registradas aún.</p>
+                <p className="p-10 text-sm text-slate-400 italic text-center w-full">No hay sesiones registradas aún.</p>
               )}
             </div>
           </div>
