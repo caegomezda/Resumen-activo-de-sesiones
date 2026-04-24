@@ -1,34 +1,58 @@
 "use client";
 
-import { useState, useEffect, use } from "react"; // Añadido 'use'
+import { useState, useEffect, use } from "react";
 import { supabase } from "@/lib/supabase";
 import { 
   Users, Calendar, Mic2, FileText, QrCode, 
-  Share2, BarChart3, ChevronLeft 
+  Share2, BarChart3, ChevronLeft, Download, X 
 } from "lucide-react";
 import Link from "next/link";
+// Nuevas importaciones para PDF y QR
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { Html5QrcodeScanner } from "html5-qrcode";
+
+// Estilos personalizados para limpiar la interfaz del escáner
+const scannerStyles = `
+  #reader { border: none !important; }
+  #reader img { display: none !important; }
+  #reader__dashboard_section_csr button, 
+  #reader__dashboard_section_fsr button {
+    background-color: #FF9900 !important;
+    color: #1A1135 !important;
+    border: none !important;
+    padding: 10px 20px !important;
+    border-radius: 12px !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    font-size: 10px !important;
+    cursor: pointer !important;
+    margin: 10px auto !important;
+  }
+  #reader__status_span { font-size: 10px !important; font-weight: bold !important; color: #1A1135 !important; }
+`;
 
 export default function DetalleSesion({ params }: { params: Promise<{ id: string }> }) {
-  // 1. Desenvolvemos los params asíncronos
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
   const [sesion, setSesion] = useState<any>(null);
   const [asistentes, setAsistentes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Estados para nuevas funcionalidades
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
     const cargarDatos = async () => {
       setLoading(true);
-      
-      // 1. Obtener datos de la sesión
       const { data: sData } = await supabase
         .from("sesiones")
         .select("*")
         .eq("id", id)
         .single();
       
-      // 2. Obtener asistentes vinculados a esta sesión
       const { data: aData } = await supabase
         .from("asistencias")
         .select("*")
@@ -43,6 +67,54 @@ export default function DetalleSesion({ params }: { params: Promise<{ id: string
       cargarDatos();
     }
   }, [id]);
+
+  // --- FUNCIÓN PARA GENERAR PDF ---
+  const descargarReportePDF = () => {
+    setIsGeneratingPdf(true);
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text("AWS USER GROUP MANIZALES", 14, 22);
+    doc.setFontSize(12);
+    doc.setTextColor(100);
+    doc.text(`Reporte de Asistencia: ${sesion?.nombre}`, 14, 30);
+    doc.text(`Fecha: ${sesion?.fecha}`, 14, 37);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['Nombre Completo', 'Rol', 'Estado']],
+      body: asistentes.map(a => [a.nombre_completo.toUpperCase(), a.rol, 'PRESENTE']),
+      headStyles: { fillColor: [26, 17, 53] },
+    });
+
+    doc.save(`Reporte_${sesion?.nombre.replace(/\s+/g, '_')}.pdf`);
+    setIsGeneratingPdf(false);
+  };
+
+  // --- EFECTO PARA EL SCANNER QR ---
+  useEffect(() => {
+    if (showScanner) {
+      const scanner = new Html5QrcodeScanner(
+        "reader", 
+        { fps: 10, qrbox: { width: 250, height: 250 } }, 
+        false
+      );
+
+      scanner.render(
+        async (decodedText) => {
+          console.log("QR Detectado:", decodedText);
+          alert(`Asistente detectado: ${decodedText}`);
+          scanner.clear();
+          setShowScanner(false);
+        },
+        (error) => { /* Errores de escaneo silenciosos */ }
+      );
+
+      return () => {
+        scanner.clear().catch(err => console.error("Error al limpiar scanner", err));
+      };
+    }
+  }, [showScanner]);
 
   if (loading) {
     return (
@@ -69,6 +141,36 @@ export default function DetalleSesion({ params }: { params: Promise<{ id: string
 
   return (
     <main className="min-h-screen bg-[#F8F9FA]">
+      <style>{scannerStyles}</style>
+      
+      {/* MODAL DEL SCANNER QR */}
+      {showScanner && (
+        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden relative shadow-2xl">
+            {/* Header del Modal */}
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <span className="text-[10px] font-black text-[#1A1135] uppercase tracking-widest">Validación de Asistencia</span>
+              <button 
+                onClick={() => setShowScanner(false)}
+                className="text-slate-400 hover:text-red-500 p-1 bg-slate-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div id="reader" className="w-full rounded-2xl overflow-hidden shadow-inner bg-slate-100"></div>
+            </div>
+
+            <div className="p-6 bg-slate-50 text-center border-t border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase italic leading-tight">
+                Si no ves la imagen, presiona el botón naranja <br/> para otorgar permisos de cámara.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* NAVBAR DE CONTROL */}
       <nav className="bg-[#1A1135] text-white p-4 sticky top-0 z-50 shadow-lg">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
@@ -76,8 +178,15 @@ export default function DetalleSesion({ params }: { params: Promise<{ id: string
             <ChevronLeft size={16} /> Volver al Dashboard
           </Link>
           <div className="flex gap-4">
+            <button 
+              onClick={descargarReportePDF}
+              disabled={isGeneratingPdf}
+              className="bg-white text-[#1A1135] px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-slate-100 transition-all shadow-md disabled:opacity-50"
+            >
+              <Download size={14} /> {isGeneratingPdf ? "GENERANDO..." : "DESCARGAR PDF"}
+            </button>
             <button className="bg-[#FF9900] text-[#1A1135] px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:brightness-110 transition-all">
-              <Share2 size={14} /> COMPARTIR EVALUACIÓN
+              <Share2 size={14} /> Evaluación
             </button>
           </div>
         </div>
@@ -175,8 +284,11 @@ export default function DetalleSesion({ params }: { params: Promise<{ id: string
             <p className="text-xs text-white/60 mb-6 leading-relaxed">
               Activa la cámara para capturar el QR y registrar la asistencia automáticamente.
             </p>
-            <button className="w-full bg-white text-[#1A1135] py-3 rounded-xl font-black hover:bg-[#FF9900] transition-all shadow-lg">
-              ESCANEAR QR
+            <button 
+              onClick={() => setShowScanner(true)}
+              className="w-full bg-[#FF9900] text-[#1A1135] py-4 rounded-xl font-black hover:brightness-110 transition-all shadow-lg flex items-center justify-center gap-2"
+            >
+              <QrCode size={18} /> ESCANEAR QR
             </button>
           </div>
 

@@ -109,9 +109,9 @@ export default function SkorifyDashboard() {
           </div>
 
           <div className="mt-4 md:mt-0 text-center md:text-right text-white/90 border-t md:border-t-0 md:border-l border-white/20 pt-4 md:pt-0 md:pl-6">
-            <p className="text-lg font-semibold text-[#FF9900]">Sesión #6: Skorify</p>
-            <p className="text-sm opacity-80 uppercase tracking-wider">23 de Abril de 2026</p>
-            <p className="text-xs opacity-60 mt-1">Campus El Cable - Aula A007</p>
+            <p className="text-lg font-semibold text-[#FF9900]">Skorify</p>
+            <p className="text-sm opacity-80 uppercase tracking-wider">Manizales 2026</p>
+            <p className="text-xs opacity-60 mt-1">AWS</p>
           </div>
         </div>
       </header>
